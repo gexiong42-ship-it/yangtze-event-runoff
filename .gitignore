@@ -1,0 +1,13 @@
+/data/
+/.runtime/
+/cloud/local-data/
+/cloud/dist/
+/cloud/.openai/
+*upload-state.json
+.env*
+node_modules/
+__pycache__/
+*.sqlite*
+*.nc
+*.tif
+*.tiff
