@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta name="generator" content="Local Python (generate_page_metadata.py)">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#075b4a">
+  <meta name="application-name" content="长江下游产流分析">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <title>长江下游流域降水事件产流分析软件 V1.0</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="runoff.js"></script>
+  <script defer src="personal-rain-store.js"></script>
+  <script defer src="rain-import.js"></script>
+  <script defer src="data-origin.js"></script>
+  <script defer src="region-scope.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="pwa.js"></script>
+</head>
+<body>
+  <dialog id="data-notice" aria-labelledby="data-notice-title">
+    <div class="notice-content">
+      <p class="notice-eyebrow">资料公告</p>
+      <h2 id="data-notice-title" tabindex="-1" autofocus>数据来源与覆盖范围</h2>
+      <section><h3>矩形估算区 · 边界说明</h3>
+        <p>“太湖周边及部分苏南沿江区域”采用约 119.1333—121.9167°E、30.0833—32.1333°N 的经纬度矩形范围，目前尚未按经核实的太湖流域或沿江排水分区边界裁剪。计算结果仅为矩形内有效分类区域的降雨产流估算，不能视为完整太湖流域产流或直接入江排水量。</p>
+        <a href="https://www.tba.gov.cn/slbthlyglj/lygk/content/6df2da7b-1a5a-4ac7-a572-841071a70587.html" target="_blank" rel="noopener noreferrer">参考：水利部太湖流域管理局水系说明</a>
+      </section>
+      <section><h3>土地利用 · 更新至 2025 年</h3>
+        <p>本网站已接入 CLCD 中国 30 米年度土地覆盖遥感数据，最新图层为 <strong>2025 年</strong>；已有年份为 1985 年及 1990—2025 年。计算时自动匹配事件开始年份的土地利用图层。</p>
+        <p>数据来源：Yang, J., &amp; Huang, X. (2026). <a href="https://zenodo.org/records/18180184" target="_blank" rel="noopener noreferrer" lang="en">The 30 m annual land cover datasets and its dynamics in China from 1985 to 2025</a> (Version 1.0.5). Zenodo.</p>
+      </section>
+      <section><h3>土壤水文组 · HYSOGs250m</h3>
+        <p>采用 Ross 等（2018）发布的全球水文土壤组数据 HYSOGs250m，空间分辨率约 250 米，由 NASA ORNL DAAC 提供。本网站使用研究区域裁剪成果，识别 A、B、C、D 及双重土组，用于匹配 CN 初值。</p>
+        <a href="https://doi.org/10.1038/sdata.2018.91" target="_blank" rel="noopener noreferrer">查看数据来源：Ross 等，Scientific Data（2018）</a>
+      </section>
+      <section><h3>格点降水 · CN05.1（1961—2022 年）</h3>
+        <p>根据所提供资料说明，该格点降水数据基于国家气象信息中心 2400 余个全国国家级台站（基本、基准和一般站）的日观测数据构建。</p>
+        <p><strong>插值方法：</strong>类似于 Xu et al. (2009)，CN05.1 数据集采用距平逼近法（anomaly approach），但使用了中国境内约 2400 个台站的观测资料（吴佳和高学杰，2013）。该方法先计算格点气候场，再对逐日距平场进行插值，最后将格点逐日距平叠加到格点气候场，得到最终数据集。</p>
+        <details class="notice-method-english"><summary>English · Interpolation method</summary>
+          <p lang="en">As did by Xu et al. (2009), the CN05.1 dataset is constructed by the “anomaly approach” during the interpolation but with more station observations (~2400) in China (Wu and Gao, 2013). In the “anomaly approach”, a gridded climatology is first calculated, and then a gridded daily anomaly is added to the climatology to obtain the final dataset.</p>
+        </details>
+        <dl class="notice-facts">
+          <div><dt>区域范围</dt><dd>69.75—140.25°E，14.75—55.25°N</dd></div>
+          <div><dt>格点数</dt><dd>283（东西方向）× 163（南北方向）</dd></div>
+          <div><dt>水平分辨率</dt><dd>0.25° × 0.25°</dd></div>
+        </dl>
+        <p class="notice-coverage"><strong>当前网站计算覆盖：</strong>原始降水资料时段为 1961—2022 年；目前在线计算库接入 1980—2022 年。自动计算还需同时具备对应年份的土地利用及该区域的有效数据。</p>
+      </section>
+      <form method="dialog" class="notice-actions"><button>我已了解，进入计算</button></form>
+    </div>
+  </dialog>
+  <dialog id="install-dialog" aria-labelledby="install-title">
+    <div class="notice-content">
+      <p class="notice-eyebrow">Android / Windows</p>
+      <h2 id="install-title" tabindex="-1" autofocus>下载与安装软件</h2>
+      <p>安装为独立窗口的网页版应用，可从手机主屏幕或 Windows 开始菜单启动。</p>
+      <p class="notice-coverage">安装后仍需联网读取云端降水、土地利用与土壤资料；不需要另外下载数 GB 的原始数据。</p>
+      <p id="install-status" role="status">正在检查浏览器安装支持…</p>
+      <button type="button" id="install-app" hidden>安装到当前设备</button>
+      <div class="install-platforms">
+        <section><h3>安卓手机</h3><p>使用 Chrome 或支持应用安装的浏览器打开本网站，点击上方安装按钮；也可在浏览器菜单中选择“安装应用”或“添加到主屏幕”。微信、QQ 内置浏览器请先选择“在浏览器中打开”。</p></section>
+        <section><h3>Windows 电脑</h3><p>使用 Microsoft Edge 或 Google Chrome 打开本网站，点击上方安装按钮；也可通过地址栏的安装图标或浏览器菜单中的“安装此站点为应用”完成安装。</p></section>
+      </div>
+      <p>下载入口：<a id="install-url" href="/download">打开软件安装页面</a></p>
+      <p>需要帮助？<button type="button" class="text-button" data-contact-open>联系管理员</button></p>
+      <form method="dialog" class="notice-actions"><button class="secondary">返回计算</button></form>
+    </div>
+  </dialog>
+  <dialog id="contact-dialog" aria-labelledby="contact-title">
+    <div class="notice-content">
+      <h2 id="contact-title" tabindex="-1" autofocus>联系管理员</h2>
+      <label for="admin-email">管理员邮箱</label>
+      <input id="admin-email" type="text" value="" readonly>
+      <p id="copy-email-status" role="status"></p>
+      <div class="notice-actions"><button type="button" id="copy-email">复制邮箱</button><form method="dialog"><button class="secondary">关闭</button></form></div>
+    </div>
+  </dialog>
+  <header class="top"><strong>长江下游流域降水事件产流分析软件 V1.0</strong><span>CN05.1 · CLCD · HYSOGs250m</span>
+    <div class="top-actions" aria-label="软件下载与联系"><a id="open-install" href="/download">下载软件</a><button type="button" data-contact-open>联系管理员</button></div>
+  </header>
+  <p id="connection-state" role="status" hidden>当前已离线，请连接网络后读取云端资料并计算。</p>
+  <div class="layout">
+    <aside>
+      <h2>研究区域</h2>
+      <button type="button" class="secondary" id="select-all">全选 / 取消全选</button>
+      <div id="regions" class="regions" aria-label="选择研究区域"></div>
+      <div class="source"><span>本地资料库</span><p id="source">正在连接…</p></div>
+    </aside>
+    <main>
+      <header class="page-head">
+        <div><h1>事件产流计算</h1><p id="description">选择区域和日期，自动匹配降水、土地利用及水文土组。</p></div>
+        <button type="button" class="secondary" id="open-data-notice">资料公告</button>
+      </header>
+      <form id="analysis-form" class="panel">
+        <label>降水数据来源<select id="rain-source"><option value="cloud">现有云端 CN05.1 降水</option><option value="netcdf">导入 NetCDF 日降水（仅本次使用）</option><option value="personal">个人 NetCDF 数据（保存后可多次使用，非公共库）</option></select></label>
+        <p id="rain-provenance" class="note" role="status">公共库数据 · CN05.1</p>
+        <div id="nc-panel" class="nc-panel" hidden>
+          <div id="personal-rain-panel" hidden>
+            <label>已保存的个人文件<select id="personal-rain-list"><option value="">请选择已保存文件，或下方选择新文件</option></select></label>
+            <p class="note">个人数据仅保存在当前浏览器，刷新或下次打开仍可选择；不上传至服务器、不覆盖公共库。换设备需重新导入，清除网站数据会移除个人文件。</p>
+            <div class="actions"><button type="button" id="personal-rain-save" class="secondary">保存当前文件供多次使用</button><button type="button" id="personal-rain-delete" class="secondary">删除选中的已保存文件</button></div>
+            <p id="personal-rain-status" role="status"></p>
+          </div>
+          <label>选择 NetCDF 文件<input type="file" id="nc-file" accept=".nc,.nc4,.cdf,application/x-netcdf,application/x-hdf5"></label>
+          <p id="nc-retention-note" class="note">仅本次模式刷新后需重新选择文件；个人保存模式选择新文件后会解析并保存到当前浏览器。两种模式都不上传、不覆盖公共库。支持 WGS84 一维经纬度网格及逐日降水。首次按原生土地利用像元匹配新网格需要时间，可取消。</p>
+          <p id="nc-preview" class="nc-preview" role="status"></p>
+          <div class="fields">
+            <label>降水变量<select id="nc-variable"><option value="">请先选择文件</option></select></label>
+            <label>降水单位<select id="nc-units"><option value="">按文件单位自动识别</option><option value="mm">确认：mm（逐日量）</option><option value="m">确认：m（逐日量）</option><option value="cm">确认：cm（逐日量）</option><option value="kg m-2 s-1">确认：kg m-2 s-1（日平均通量）</option></select></label>
+          </div>
+          <p class="note">单位无法识别时需手动确认；通量仅在为日平均值时才能转换为日降水量。文件须覆盖事件和前期湿润度日期。土地利用按事件开始年份匹配，缺少年份图层时不外推。</p>
+          <div class="actions"><button type="button" id="nc-clear" class="secondary">清除当前文件选择</button><button type="button" id="nc-cancel" class="secondary" hidden>取消当前任务</button></div>
+        </div>
+        <h2>目标降水日期</h2>
+        <div class="fields">
+          <label>事件开始<input type="date" id="start" value="2021-07-01" required></label>
+          <label>事件结束<input type="date" id="end" value="2021-07-03" required></label>
+        </div>
+        <h2 class="section-heading">前期湿润度计算日期</h2>
+        <div class="fields">
+          <label>前期开始<input type="date" id="antecedent-start" value="2021-06-26" required></label>
+          <label>前期结束<input type="date" id="antecedent-end" value="2021-06-30" required></label>
+        </div>
+        <p class="note">默认推荐事件前五天，可编辑。前期降水用于判断初始湿润条件，事件产流从事件第一日累计计算。日雨量沿用原 NetCDF 日期标签。</p>
+        <details>
+          <summary>计算参数与湿润判据</summary>
+          <div class="fields parameter-fields">
+            <label>初损系数 λ<input type="number" id="lambda" min="0" max="1" step="any" value="0.2" required></label>
+            <label>前期湿润判据<select id="moisture-scheme"><option value="growing">传统五日分级 · 生长期</option><option value="dormant">传统五日分级 · 休眠期</option><option value="custom">自定义时段与阈值</option></select></label>
+            <label>偏干阈值（mm，小于）<input type="number" id="dry-below" min="0" step="any" value="36" disabled></label>
+            <label>偏湿阈值（mm，大于）<input type="number" id="wet-from" min="0" step="any" value="53" disabled></label>
+            <label>自定义判据出处<input id="moisture-source" placeholder="文献、区域率定或研究依据" disabled></label>
+            <label>双重土组排水情景<select id="drainage"><option value="undrained">未充分排水 · 采用 D</option><option value="drained">充分排水 · 采用前一土组</option></select></label>
+            <label>充分排水依据<input id="drainage-source" placeholder="调查、设施或文献依据"></label>
+          </div>
+          <p class="note">传统分级要求紧邻事件的五个完整日。生长期默认 36 / 53 mm，休眠期 13 / 28 mm，季节由用户选择。其他时段须使用自定义阈值。TR-55 初值以平均湿润条件和 λ=0.2 为参考。</p>
+        </details>
+        <p id="landuse-match" role="status"></p>
+        <p id="region-notes" class="note"></p>
+        <div id="availability"></div>
+        <div class="actions"><button type="submit" id="run" disabled>计算所选流域产流</button></div>
+      </form>
+      <p id="message" role="status" hidden></p>
+      <section class="panel result-panel">
+        <div class="result-header"><h2>分流域结果</h2><div class="actions"><button type="button" id="csv" class="secondary" disabled>下载 CSV</button><button type="button" id="json" class="secondary" disabled>下载复算 JSON</button></div></div>
+        <p id="result-state" class="note">选择区域和日期后执行计算。</p>
+        <div id="results"></div>
+        <p class="note">陆地产流与水面直接降水输入分别列示。覆盖率按有效陆地与水面面积合计占 CLCD 有效分类面积的比例计算，CLCD 原始未分类像元不在分母内。缺测和缺少 CN 的面积保留质量标记。土地利用采用事件开始年份。</p>
+        <details id="quality-details"><summary>资料覆盖与排除面积</summary><div id="quality-preview"></div></details>
+        <details><summary>逐日雨量与累计产流差分</summary><div id="daily-preview"></div></details>
+        <details><summary>CN、土组与湿润条件明细</summary><div id="cn-preview"></div></details>
+      </section>
+      <details class="panel supporting-panel">
+        <summary>参数敏感性</summary>
+        <div class="fields parameter-fields">
+          <label>参考 CN 扰动（±）<input type="number" id="delta" min="0" max="99" step="any" value="5"></label>
+          <label>初损系数扰动（±）<input type="number" id="lambda-delta" min="0" max="1" step="any" value="0.05"></label>
+          <label>湿润情景<select id="wetness"><option value="偏干">偏干</option><option value="适中">适中</option><option value="偏湿">偏湿</option></select></label>
+          <label>扰动依据<input id="scenario-source" placeholder="文献或参数来源"></label>
+        </div>
+        <button type="button" id="scenarios" disabled>比较陆地产流情景</button>
+        <div id="scenario-results"></div>
+      </details>
+      <details class="panel supporting-panel">
+        <summary>本地数据库与 CN 参数</summary>
+        <h2 class="section-heading">当前年份土地利用</h2><div id="database-preview"></div>
+        <h2 class="section-heading">水文土壤资料</h2><div id="soil-database-preview"></div>
+        <h2 class="section-heading">当前 CN 初值</h2>
+        <p class="note">初值对耕地采用直行种植良好条件，林地、灌木地和草地采用良好条件。水体单列降水输入；冰雪和湿地缺少映射时显示排除面积。</p>
+        <label>导入 CN 参数 JSON<input type="file" id="cn-file" accept=".json,application/json"></label>
+        <div id="cn-parameters-preview"></div>
+        <details><summary>查看 TR-55 原表全部参数</summary><div id="tr55-preview"></div></details>
+      </details>
+      <details class="panel supporting-panel">
+        <summary>导入单元资料与示例</summary>
+        <p class="note">可继续使用自备相交单元 JSON 或旧版复算文件。此处的计算使用文件中的单元范围。</p>
+        <div class="actions"><input type="file" id="file" aria-label="导入相交单元资料" accept=".json,application/json"><button type="button" class="secondary" id="demo">计算合成示例</button></div>
+      </details>
+    </main>
+  </div>
+</body>
+</html>

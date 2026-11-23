@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "长江下游流域降水事件产流分析软件 V1.0",
+  "short_name": "长江下游产流分析",
+  "description": "按研究区域与降水日期匹配云端资料，计算陆地产流及水面降水输入。需要联网使用。",
+  "lang": "zh-CN",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f7f5",
+  "theme_color": "#075b4a",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

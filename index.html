@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta name="generator" content="Local Python (generate_page_metadata.py)">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分流域事件产流估算</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="runoff.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="top"><strong>分流域事件产流估算</strong><span>CN05.1 · CLCD · HYSOGs250m</span></header>
+  <div class="layout">
+    <aside>
+      <h2>研究区域</h2>
+      <button type="button" class="secondary" id="select-all">全选 / 取消全选</button>
+      <div id="regions" class="regions" aria-label="选择研究区域"></div>
+      <div class="source"><span>本地资料库</span><p id="source">正在连接…</p></div>
+    </aside>
+    <main>
+      <header class="page-head">
+        <div><h1>事件产流计算</h1><p id="description">选择区域和日期，自动匹配降水、土地利用及水文土组。</p></div>
+      </header>
+      <form id="analysis-form" class="panel">
+        <h2>目标降水日期</h2>
+        <div class="fields">
+          <label>事件开始<input type="date" id="start" value="2021-07-01" required></label>
+          <label>事件结束<input type="date" id="end" value="2021-07-03" required></label>
+        </div>
+        <h2 class="section-heading">前期湿润度计算日期</h2>
+        <div class="fields">
+          <label>前期开始<input type="date" id="antecedent-start" value="2021-06-26" required></label>
+          <label>前期结束<input type="date" id="antecedent-end" value="2021-06-30" required></label>
+        </div>
+        <p class="note">默认推荐事件前五天，可编辑。前期降水用于判断初始湿润条件，事件产流从事件第一日累计计算。日雨量沿用原 NetCDF 日期标签。</p>
+        <details>
+          <summary>计算参数与湿润判据</summary>
+          <div class="fields parameter-fields">
+            <label>初损系数 λ<input type="number" id="lambda" min="0" max="1" step="any" value="0.2" required></label>
+            <label>前期湿润判据<select id="moisture-scheme"><option value="growing">传统五日分级 · 生长期</option><option value="dormant">传统五日分级 · 休眠期</option><option value="custom">自定义时段与阈值</option></select></label>
+            <label>偏干阈值（mm，小于）<input type="number" id="dry-below" min="0" step="any" value="36" disabled></label>
+            <label>偏湿阈值（mm，大于）<input type="number" id="wet-from" min="0" step="any" value="53" disabled></label>
+            <label>自定义判据出处<input id="moisture-source" placeholder="文献、区域率定或研究依据" disabled></label>
+            <label>双重土组排水情景<select id="drainage"><option value="undrained">未充分排水 · 采用 D</option><option value="drained">充分排水 · 采用前一土组</option></select></label>
+            <label>充分排水依据<input id="drainage-source" placeholder="调查、设施或文献依据"></label>
+          </div>
+          <p class="note">传统分级要求紧邻事件的五个完整日。生长期默认 36 / 53 mm，休眠期 13 / 28 mm，季节由用户选择。其他时段须使用自定义阈值。TR-55 初值以平均湿润条件和 λ=0.2 为参考。</p>
+        </details>
+        <p id="landuse-match" role="status"></p>
+        <p id="region-notes" class="note"></p>
+        <div id="availability"></div>
+        <div class="actions"><button type="submit" id="run" disabled>计算所选流域产流</button></div>
+      </form>
+      <p id="message" role="status" hidden></p>
+      <section class="panel result-panel">
+        <div class="result-header"><h2>分流域结果</h2><div class="actions"><button type="button" id="csv" class="secondary" disabled>下载 CSV</button><button type="button" id="json" class="secondary" disabled>下载复算 JSON</button></div></div>
+        <p id="result-state" class="note">选择区域和日期后执行计算。</p>
+        <div id="results"></div>
+        <p class="note">陆地产流与水面直接降水输入分别列示。覆盖率按有效陆地与水面面积合计占 CLCD 有效分类面积的比例计算，CLCD 原始未分类像元不在分母内。缺测和缺少 CN 的面积保留质量标记。土地利用采用事件开始年份。</p>
+        <details id="quality-details"><summary>资料覆盖与排除面积</summary><div id="quality-preview"></div></details>
+        <details><summary>逐日雨量与累计产流差分</summary><div id="daily-preview"></div></details>
+        <details><summary>CN、土组与湿润条件明细</summary><div id="cn-preview"></div></details>
+      </section>
+      <details class="panel supporting-panel">
+        <summary>参数敏感性</summary>
+        <div class="fields parameter-fields">
+          <label>参考 CN 扰动（±）<input type="number" id="delta" min="0" max="99" step="any" value="5"></label>
+          <label>初损系数扰动（±）<input type="number" id="lambda-delta" min="0" max="1" step="any" value="0.05"></label>
+          <label>湿润情景<select id="wetness"><option value="偏干">偏干</option><option value="适中">适中</option><option value="偏湿">偏湿</option></select></label>
+          <label>扰动依据<input id="scenario-source" placeholder="文献或参数来源"></label>
+        </div>
+        <button type="button" id="scenarios" disabled>比较陆地产流情景</button>
+        <div id="scenario-results"></div>
+      </details>
+      <details class="panel supporting-panel">
+        <summary>本地数据库与 CN 参数</summary>
+        <h2 class="section-heading">当前年份土地利用</h2><div id="database-preview"></div>
+        <h2 class="section-heading">水文土壤资料</h2><div id="soil-database-preview"></div>
+        <h2 class="section-heading">当前 CN 初值</h2>
+        <p class="note">初值对耕地采用直行种植良好条件，林地、灌木地和草地采用良好条件。水体单列降水输入；冰雪和湿地缺少映射时显示排除面积。</p>
+        <label>导入 CN 参数 JSON<input type="file" id="cn-file" accept=".json,application/json"></label>
+        <div id="cn-parameters-preview"></div>
+        <details><summary>查看 TR-55 原表全部参数</summary><div id="tr55-preview"></div></details>
+      </details>
+      <details class="panel supporting-panel">
+        <summary>导入单元资料与示例</summary>
+        <p class="note">可继续使用自备相交单元 JSON 或旧版复算文件。此处的计算使用文件中的单元范围。</p>
+        <div class="actions"><input type="file" id="file" aria-label="导入相交单元资料" accept=".json,application/json"><button type="button" class="secondary" id="demo">计算合成示例</button></div>
+      </details>
+    </main>
+  </div>
+</body>
+</html>
