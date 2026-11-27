@@ -8,7 +8,7 @@ const root = dirname(fileURLToPath(import.meta.url))
 const assets = {}
 for (const [name, type] of [['index.html', 'text/html; charset=utf-8'], ['app.js', 'text/javascript; charset=utf-8'],
   ['runoff.js', 'text/javascript; charset=utf-8'], ['style.css', 'text/css; charset=utf-8'],
-  ['pwa.js', 'text/javascript; charset=utf-8'], ['rain-import.js', 'text/javascript; charset=utf-8'],
+  ['result-view.js', 'text/javascript; charset=utf-8'], ['pwa.js', 'text/javascript; charset=utf-8'], ['rain-import.js', 'text/javascript; charset=utf-8'],
   ['manifest.webmanifest', 'application/manifest+json; charset=utf-8']]) {
   let body = await readFile(resolve(root, 'public', name), 'utf8')
   if (name === 'index.html') body = body.replaceAll('本地资料库', '云端资料库').replace('本地数据库与 CN 参数', '云端数据库与 CN 参数')
@@ -46,7 +46,11 @@ await mkdir(resolve(root, 'dist/.openai'), { recursive: true })
 await build({ stdin: { contents: 'const ASSETS = ' + JSON.stringify(assets) + '\n' + worker,
   resolveDir: resolve(root, 'src'), sourcefile: 'worker.mjs', loader: 'js' },
   bundle: true, platform: 'browser', format: 'esm', target: 'es2022', outfile: resolve(root, 'dist/server/index.js') })
-await writeFile(resolve(root, 'dist/.openai/hosting.json'), await readFile(resolve(root, '.openai/hosting.json')))
+const hostingConfig = await readFile(resolve(root, '.openai/hosting.json')).catch(error => {
+  if (error.code !== 'ENOENT') throw error
+  return null
+})
+if (hostingConfig) await writeFile(resolve(root, 'dist/.openai/hosting.json'), hostingConfig)
 const code = await readFile(resolve(root, 'dist/server/index.js'), 'utf8')
 const module = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'))
 if (typeof module.default?.fetch !== 'function') throw new Error('云端构建未导出 fetch。')

@@ -1,3 +1,4 @@
+const { volume: volumeCell, renderMap, renderLandUse } = ResultView
 const get = id => document.getElementById(id)
 get('open-data-notice').addEventListener('click', () => get('data-notice').showModal())
 if (location.pathname !== '/download') get('data-notice').showModal()
@@ -29,6 +30,25 @@ async function api(path, data) {
   return result
 }
 
+function loadLandUse(row, signal) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker('/rain-worker.js')
+    const abort = () => finish(reject, signal.reason)
+    const finish = (callback, value) => {
+      worker.terminate()
+      signal.removeEventListener('abort', abort)
+      callback(value)
+    }
+    worker.onmessage = ({ data }) => {
+      if (data.error) finish(reject, new Error(data.error))
+      else finish(resolve, data.result)
+    }
+    worker.onerror = () => finish(reject, new Error('土地利用图读取失败。'))
+    signal.addEventListener('abort', abort, { once: true })
+    worker.postMessage({ id: 1, type: 'land-use-preview', payload: row })
+  })
+}
+
 function table(id, headers, rows) {
   const target = get(id)
   target.replaceChildren()
@@ -46,7 +66,11 @@ function table(id, headers, rows) {
   const body = node.createTBody()
   for (const values of rows) {
     const row = body.insertRow()
-    for (const value of values) row.insertCell().textContent = RegionScope.display(value)
+    for (const value of values) {
+      const cell = row.insertCell()
+      if (value instanceof Node) cell.append(value)
+      else cell.textContent = RegionScope.display(value)
+    }
   }
   wrap.append(node)
   target.append(wrap)
@@ -176,6 +200,8 @@ function clearResults() {
   state.scenarios = null
   for (const id of ['results', 'daily-preview', 'quality-preview', 'cn-preview', 'scenario-results']) get(id).replaceChildren()
   for (const id of ['csv', 'json', 'scenarios']) get(id).disabled = true
+  renderMap([])
+  renderLandUse([], [], loadLandUse)
   get('result-state').textContent = '输入已更新，执行计算以生成结果。'
 }
 
@@ -186,14 +212,13 @@ function qualityOf(input, basin) {
 }
 
 function addRun(input, dates, quality, waterUnits = []) {
-  for (const [basin, value] of Object.entries(quality)) {
-    if (RegionScope.note(basin)) Object.assign(value, { displayBasin: RegionScope.name(basin), regionNote: RegionScope.note(basin) })
-  }
-  const result = Runoff.calculate(input, dates, state.config.lambda)
+  const result = Runoff.calculate(input, dates, state.config.lambda, { quality })
   state.runs.push({ input, dates, result, quality, waterUnits })
 }
 
 function renderResults() {
+  renderMap(state.runs, RegionScope.name)
+  renderLandUse(state.runs, state.catalogue?.layers ?? [], loadLandUse, RegionScope.name)
   table('results', ['研究区域', '降水数据来源', '土地利用年份', 'CLCD分类面积 km²', '分类范围覆盖 %', '陆地面积 km²', '前期雨量 mm',
     '陆地事件雨量 mm', '陆地产流深 mm', '陆地产流 m³', '水面降水输入 m³', '径流系数'],
     state.runs.flatMap(run => run.result.basins.map(row => {
@@ -201,7 +226,7 @@ function renderResults() {
       return [row.basin, RainSource.label(run.input), run.input.layer.year, number(q.totalAreaKm2),
         number(100 * (q.landAreaKm2 + q.waterAreaKm2) / q.totalAreaKm2), number(row.areaKm2),
         number(row.antecedentMm), number(row.rainMm), number(row.runoffMm),
-        number(row.volumeM3), number(q.waterVolumeM3), number(row.coefficient)]
+        volumeCell(row.volumeM3), volumeCell(q.waterVolumeM3 * row.volumeScale), number(row.coefficient)]
     })))
   const coverage = state.runs.flatMap(run => Object.entries(run.quality).map(([basin, q]) => [
     basin, number(q.totalAreaKm2), number(q.landAreaKm2), number(q.waterAreaKm2), number(q.excludedAreaKm2),
@@ -221,7 +246,7 @@ function renderResults() {
       const rain = units.reduce((sum, unit) => sum + unit.areaKm2 * unit.rain[day], 0) / basin.areaKm2
       const volume = units.reduce((sum, unit) => sum + 1000 * unit.areaKm2 * unit.dailyRunoff[index], 0)
       const water = run.waterUnits.reduce((sum, unit) => sum + 1000 * unit.areaKm2 * unit.rain[day], 0)
-      return [basin.basin, day, number(rain), number(volume / (1000 * basin.areaKm2)), number(volume), number(water)]
+      return [basin.basin, day, number(rain), number(volume / (1000 * basin.areaKm2)), volumeCell(volume * basin.volumeScale), volumeCell(water * basin.volumeScale)]
     }))))
   const partial = state.runs.flatMap(run => Object.values(run.quality)).filter(q => q.excludedAreaKm2 > 0).length
   get('result-state').textContent = `已完成 ${state.runs.reduce((sum, run) => sum + run.result.basins.length, 0)} 个区域，${partial} 个存在部分面积缺项，${state.errors.length} 个未能计算。`
@@ -312,15 +337,15 @@ function scenarios() {
     { name: '指定湿润条件', lambda, moistureOverride: get('wetness').value },
   ]
   const runs = choices.map(choice => ({ ...choice,
-    basins: state.runs.flatMap(run => Runoff.calculate(run.input, run.dates, choice.lambda, choice).basins) }))
+    basins: state.runs.flatMap(run => Runoff.calculate(run.input, run.dates, choice.lambda, { ...choice, quality: run.quality }).basins) }))
   const summary = state.runs.flatMap(run => run.result.basins).map((row, index) => {
     const values = [row.volumeM3, ...runs.map(run => run.basins[index].volumeM3)]
     return { basin: row.basin, baselineM3: row.volumeM3, lowM3: Math.min(...values), highM3: Math.max(...values) }
   })
   state.scenarios = { source, runs, summary }
   table('scenario-results', ['流域', '基准 m³', ...choices.map(choice => choice.name + ' m³'), '范围 m³'],
-    summary.map((row, index) => [row.basin, number(row.baselineM3),
-      ...runs.map(run => number(run.basins[index].volumeM3)), `${number(row.lowM3)} 至 ${number(row.highM3)}`]))
+    summary.map((row, index) => [row.basin, volumeCell(row.baselineM3),
+      ...runs.map(run => volumeCell(run.basins[index].volumeM3)), volumeCell(row.lowM3, row.highM3)]))
 }
 
 function download(name, contents, type) {
@@ -335,15 +360,17 @@ function download(name, contents, type) {
 function exportCsv() {
   const rows = [['研究区域', '降水数据来源', '范围说明', '事件日期', '前期日期', '土地利用年份', 'CLCD分类面积km²', '有效陆地km²', '有效水面km²',
     '覆盖率', '排除面积km²', '前期雨量mm', '陆地事件雨量mm', '陆地产流深mm', '陆地产流m³', '水面降水输入m³',
-    '径流系数', '初损系数', '湿润判据出处', 'CN出处', '情景下限m³', '情景上限m³', '边界内CLCD未分类km²（不计入分类面积）']]
+    '径流系数', '初损系数', '湿润判据出处', 'CN出处', '情景下限m³', '情景上限m³', '边界内CLCD未分类km²（不计入分类面积）',
+    '产流体积换算陆地面积km²', '水面降水体积换算面积km²', '面积折算系数']]
   for (const run of state.runs) {
     for (const row of run.result.basins) {
       const q = run.quality[row.basin]
       const scenario = state.scenarios?.summary.find(item => item.basin === row.basin)
       rows.push([RegionScope.name(row.basin), RainSource.label(run.input), q.regionNote || '', range(run.dates.event), range(run.dates.antecedent), run.input.layer.year, q.totalAreaKm2,
         row.areaKm2, q.waterAreaKm2, (q.landAreaKm2 + q.waterAreaKm2) / q.totalAreaKm2, q.excludedAreaKm2,
-        row.antecedentMm, row.rainMm, row.runoffMm, row.volumeM3, q.waterVolumeM3, row.coefficient,
-        state.config.lambda, run.input.moisture.source, run.input.layer.cnSource, scenario?.lowM3, scenario?.highM3, q.CLCDNoDataInsideBoundaryKm2])
+        row.antecedentMm, row.rainMm, row.runoffMm, row.volumeM3, q.waterVolumeM3 * row.volumeScale, row.coefficient,
+        state.config.lambda, run.input.moisture.source, run.input.layer.cnSource, scenario?.lowM3, scenario?.highM3, q.CLCDNoDataInsideBoundaryKm2,
+        row.areaKm2 * row.volumeScale, q.waterAreaKm2 * row.volumeScale, row.volumeScale])
     }
   }
   const quote = value => {
@@ -460,7 +487,7 @@ action(async () => {
     checkbox.type = 'checkbox'
     checkbox.value = basin
     checkbox.checked = true
-    label.append(checkbox, document.createTextNode(RegionScope.name(basin) + (RegionScope.note(basin) ? '（矩形估算区）' : '')))
+    label.append(checkbox, document.createTextNode(RegionScope.name(basin)))
     get('regions').append(label)
   }
   renderCatalogue()

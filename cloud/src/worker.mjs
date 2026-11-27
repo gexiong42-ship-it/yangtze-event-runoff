@@ -10,7 +10,7 @@ function jsonResponse(data, status = 200) {
 }
 
 async function objectJSON(bucket, key) {
-  const object = await bucket.get(key)
+  const object = await bucket.get(key === 'catalogue.json' ? 'taihu-eight-v1/catalogue.json' : key)
   if (!object) throw new Error('云端资料尚未就绪 ' + key)
   const data = await object.json()
   return key === 'catalogue.json' ? annotate(data) : data
