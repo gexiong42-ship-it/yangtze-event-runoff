@@ -111,10 +111,17 @@ def assemble(config):
     reference = database.coverage_reference(basin, year)
     if reference:
         quality["CLCDNoDataInsideBoundaryKm2"] = reference["CLCDNoDataInsideBoundaryKm2"]
+        if "boundaryAreaKm2" in reference:
+            quality["boundaryAreaKm2"] = reference["boundaryAreaKm2"]
+            quality["displayBasin"] = database.TAIHU_NAME
+    rain_metadata = {key: info[key] for key in ("name", "variable", "units", "start", "end", "dayBoundary")}
+    grid_axes = ("latitudes", "longitudes")
+    if all(key in info for key in grid_axes):
+        rain_metadata["grid"] = {key: info[key] for key in grid_axes}
     return {"input": {"rainUnit": "mm", "layer": {"year": year, "version": "CLCD {} 核心研究区".format(year),
                         "cnSource": "TR-55 初值及本地自定义参数，逐单元保留出处", "rasters": [area["landRaster"]]},
                       "soilLayer": {"version": "HYSOGs250m", "rasters": [area["soilRaster"]], "source": database.SOIL_SOURCE,
                                     "drainage": drainage, "drainageSource": drainage_source},
-                      "precipitation": {key: info[key] for key in ("name", "variable", "units", "start", "end", "dayBoundary")},
+                      "precipitation": rain_metadata,
                       "moisture": moisture, "units": units},
             "dates": dates, "quality": quality, "waterUnits": water}

@@ -52,7 +52,8 @@ export async function assembleEvent(config, store) {
   const drainageSource = config.drainageSource ?? ''
   if (!['undrained', 'drained'].includes(drainage)) throw new Error('排水情景无效。')
   if (drainage === 'drained' && (typeof drainageSource !== 'string' || !drainageSource.trim())) throw new Error('请填写充分排水依据。')
-  const area = store.getWeights ? await store.getWeights(basin, year) : await store.getJSON('weights/' + year + '/' + basinId + '.json')
+  const weightKey = catalogue.weightsKeys?.[basin]?.[year] ?? 'weights/' + year + '/' + basinId + '.json'
+  const area = store.getWeights ? await store.getWeights(basin, year) : await store.getJSON(weightKey)
   const allDays = [...dates.antecedent, ...dates.event]
   const wanted = [...new Set(area.groups.map(group => group.grid).filter(grid => grid >= 0))]
   const { info, fields } = await store.readRain(allDays, wanted)
@@ -112,14 +113,21 @@ export async function assembleEvent(config, store) {
     excludedAreaKm2: Object.values(excluded).reduce((sum, km2) => sum + km2, 0),
     rainMm: rainArea ? totalRain / rainArea : null, spatialMethod: area.method, spatialSignature: area.signature,
     displayBasin: regionName(basin), regionNote: regionNote(basin) || catalogue.regionNotes?.[basin] || '', soilIndependentImperviousKm2: independentArea }
-  if (year === 2021) {
+  const reference = catalogue.coverage?.[basin]?.[year]
+  if (reference) {
+    quality.CLCDNoDataInsideBoundaryKm2 = reference.CLCDNoDataInsideBoundaryKm2
+    if (reference.boundaryAreaKm2 != null) quality.boundaryAreaKm2 = reference.boundaryAreaKm2
+  } else if (year === 2021) {
     const audit = await store.getJSON('audit.json')
     if (audit[basin]) quality.CLCDNoDataInsideBoundaryKm2 = audit[basin].CLCDNoDataInsideBoundaryKm2
   }
   const precipitation = Object.fromEntries(['name', 'variable', 'units', 'start', 'end', 'dayBoundary'].map(key => [key, info[key]]))
+  if (info.latitudes && info.longitudes) {
+    precipitation.grid = { latitudes: info.latitudes, longitudes: info.longitudes }
+  }
   precipitation.sourceKind = info.sourceKind || 'public-cloud'
   if (info.sourceKind === 'session-netcdf') Object.assign(precipitation, {
-    sourceKind: info.sourceKind, originalUnits: info.originalUnits, grid: info.grid,
+    sourceKind: info.sourceKind, originalUnits: info.originalUnits, grid: info.grid ?? precipitation.grid,
     fileBytes: info.fileBytes, fileLastModified: info.fileLastModified, unitOverride: info.unitOverride,
   })
   return { input: { rainUnit: 'mm', layer: { year, version: 'CLCD ' + year + ' 核心研究区',

@@ -16,6 +16,14 @@ from rasterio.warp import transform
 DB = ROOT / "data" / "landuse.sqlite3"
 SOIL_SOURCE = "https://doi.org/10.1038/sdata.2018.91"
 SOIL_GROUPS = {1: "A", 2: "B", 3: "C", 4: "D", 11: "A/D", 12: "B/D", 13: "C/D", 14: "D/D"}
+TAIHU_ID = "太湖流域及苏南河网"
+TAIHU_NAME = "太湖流域（八区外缘试用边界）"
+TAIHU_NOTE = "边界据太浦河后续（一期）工程环境影响报告书图4.1-1配准并概化描绘，按提供的八区外缘试用边界计算。"
+
+
+def taihu_release():
+    path = ROOT / "data/taihu_trial/active.json"
+    return json.loads(path.read_text("utf-8")) if path.exists() else {}
 
 
 @contextmanager
@@ -55,6 +63,10 @@ def connect():
 
 def build():
     paths = sorted((ROOT / "CLCD核心研究区裁剪成果").rglob("*.tif"))
+    release = taihu_release()
+    if release:
+        paths = [path for path in paths if not path.name.startswith("05_" + TAIHU_ID + "_CLCD_")]
+        paths.extend(ROOT / path for path in release["land"])
     if not paths:
         raise ValueError("未找到土地利用 GeoTIFF。")
     records = []
@@ -89,10 +101,12 @@ def catalogue():
         row["codes"] = json.loads(row.pop("codes_json"))
     return {"years": sorted(set(row["year"] for row in layers)), "layers": layers,
             "cnParameterCount": count, "soilLayers": soils, "cnParameters": parameters, "tr55References": references,
-            "regionNotes": region_notes()}
+            "regionNotes": region_notes(), "displayNames": {TAIHU_ID: TAIHU_NAME} if taihu_release() else {}}
 
 
 def region_notes():
+    if taihu_release():
+        return {TAIHU_ID: TAIHU_NOTE}
     path = ROOT / "data" / "audit2021" / "audit.json"
     if not path.exists():
         return {}
@@ -102,6 +116,8 @@ def region_notes():
 
 
 def coverage_reference(basin, year):
+    if basin == TAIHU_ID and taihu_release():
+        return taihu_release()["coverage"].get(str(year), {})
     annual = ROOT / 'cloud' / 'src' / 'annual-coverage.json'
     if annual.exists():
         reference = json.loads(annual.read_text('utf-8')).get('years', {}).get(str(year), {}).get(basin)
@@ -118,6 +134,10 @@ def build_soils():
     buffered = ROOT / "data" / "HYSOGs250m_buffered"
     folder = buffered if (buffered / "manifest.json").exists() else ROOT / "data" / "HYSOGs250m"
     paths = sorted(folder.glob("*.tif"))
+    release = taihu_release()
+    if release:
+        paths = [path for path in paths if path.name != "05_" + TAIHU_ID + "_HYSOGs250m.tif"]
+        paths.append(ROOT / release["soil"])
     if not paths:
         raise ValueError("未找到 HYSOGs250m GeoTIFF。")
     records = []

@@ -1,15 +1,15 @@
 // Stable dataset identifiers are retained; labels describe the verified spatial scope.
-export const RECTANGLE_ID = '太湖流域及苏南河网'
-export const RECTANGLE_NAME = '太湖周边及部分苏南沿江区域'
-export const RECTANGLE_NOTE = '该选项采用约 119.1333—121.9167°E、30.0833—32.1333°N 的经纬度矩形范围，尚未按经核实的太湖流域或沿江排水分区边界裁剪。结果仅代表矩形内 CLCD 有效分类区域的降雨产流估算，不代表完整太湖流域产流，也不能直接等同于入江排水量。面积与覆盖率以 CLCD 有效分类范围为基准。'
-export function name(id) { return id === RECTANGLE_ID ? RECTANGLE_NAME : id }
-export function note(id) { return id === RECTANGLE_ID ? RECTANGLE_NOTE : '' }
+export const TAIHU_ID = '太湖流域及苏南河网'
+export const TAIHU_NAME = '太湖流域（八区外缘试用边界）'
+export const TAIHU_NOTE = '边界据太浦河后续（一期）工程环境影响报告书图4.1-1配准并概化描绘，按提供的八区外缘试用边界计算。'
+export function name(id) { return id === TAIHU_ID ? TAIHU_NAME : id }
+export function note(id) { return id === TAIHU_ID ? TAIHU_NOTE : '' }
 export function display(value) {
-  if (value === RECTANGLE_ID) return RECTANGLE_NAME
-  if (typeof value === 'string' && value.startsWith(RECTANGLE_ID + '-')) return RECTANGLE_NAME + value.slice(RECTANGLE_ID.length)
+  if (value === TAIHU_ID) return TAIHU_NAME
+  if (typeof value === 'string' && value.startsWith(TAIHU_ID + '-')) return TAIHU_NAME + value.slice(TAIHU_ID.length)
   return value
 }
 export function annotate(catalogue) {
-  return { ...catalogue, displayNames: { ...catalogue.displayNames, [RECTANGLE_ID]: RECTANGLE_NAME },
-    regionNotes: { ...catalogue.regionNotes, [RECTANGLE_ID]: RECTANGLE_NOTE } }
+  return { ...catalogue, displayNames: { ...catalogue.displayNames, [TAIHU_ID]: TAIHU_NAME },
+    regionNotes: { ...catalogue.regionNotes, [TAIHU_ID]: TAIHU_NOTE } }
 }

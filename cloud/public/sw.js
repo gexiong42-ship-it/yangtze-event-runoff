@@ -1,6 +1,6 @@
 const PREFIX = 'yangtze-runoff-shell-'
 const CACHE = PREFIX + '__BUILD_VERSION__'
-const SHELL = ['/', '/index.html', '/app.js', '/pwa.js', '/runoff.js', '/rain-import.js', '/rain-worker.js', '/data-origin.js', '/region-scope.js', '/personal-rain-store.js', '/style.css',
+const SHELL = ['/', '/index.html', '/app.js', '/result-view.js', '/pwa.js', '/runoff.js', '/rain-import.js', '/rain-worker.js', '/data-origin.js', '/region-scope.js', '/personal-rain-store.js', '/style.css',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()))

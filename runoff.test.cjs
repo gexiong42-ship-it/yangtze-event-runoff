@@ -46,3 +46,21 @@ test('传统湿润判据在上限值时仍保持适中', () => {
   input.units[0].rain[period.antecedent[0]] = 53.01
   assert.equal(calculate(input, period, 0.2).units[0].moisture, '偏湿')
 })
+
+test('Taihu volumes use the official area factor for trial-boundary spatial runs', () => {
+  const basin = '太湖流域及苏南河网'
+  const period = dates('2021-07-01', '2021-07-03')
+  const input = sample(period)
+  input.demo = false
+  input.layer.rasters = ['data/taihu_trial/taihu.tif']
+  input.units[0].basin = basin
+  const quality = { [basin]: { spatialMethod: 'native grid' } }
+  const raw = calculate(input, period, 0.2)
+  const scaled = calculate(input, period, 0.2, { quality })
+  const expected = 36895 / 37910.3697
+  assert.equal(scaled.basins[0].volumeM3, raw.basins[0].volumeM3 * expected)
+  assert.equal(scaled.basins[0].runoffMm, raw.basins[0].runoffMm)
+  assert.equal(scaled.basins[1].volumeM3, raw.basins[1].volumeM3)
+  input.layer.rasters = ['legacy/taihu.tif']
+  assert.equal(calculate(input, period, 0.2, { quality }).basins[0].volumeM3, raw.basins[0].volumeM3)
+})

@@ -45,7 +45,16 @@ const Runoff = (() => {
     }
   }
 
-  function calculate(input, period, lambda, { cnDelta = 0, moistureOverride = null } = {}) {
+  function volumeScale(basin, input, quality) {
+    const trialRaster = Array.isArray(input.layer?.rasters) && input.layer.rasters.some(path =>
+      typeof path === 'string' && path.split(/[\\/]/).includes('taihu_trial'))
+    if (basin === '太湖流域及苏南河网' && quality?.[basin]?.spatialMethod && trialRaster) {
+      return 36895 / 37910.3697
+    }
+    return 1
+  }
+
+  function calculate(input, period, lambda, { cnDelta = 0, moistureOverride = null, quality } = {}) {
     validate(input, period)
     if (!Number.isFinite(lambda) || lambda < 0 || lambda > 1 || !Number.isFinite(cnDelta)
         || ![null, '偏干', '适中', '偏湿'].includes(moistureOverride)) throw new Error('计算参数无效。')
@@ -79,11 +88,12 @@ const Runoff = (() => {
     }
     const basins = Array.from(groups, ([basin, group]) => {
       const areaKm2 = sum(group.map(unit => unit.areaKm2))
+      const scale = volumeScale(basin, input, quality)
       const average = key => sum(group.map(unit => unit[key] * unit.areaKm2)) / areaKm2
       const rainMm = average('rainMm')
       const runoffMm = average('runoffMm')
       return { basin, areaKm2, antecedentMm: average('antecedentMm'), rainMm, runoffMm,
-        volumeM3: sum(group.map(unit => unit.volumeM3)), coefficient: rainMm ? runoffMm / rainMm : null }
+        volumeScale: scale, volumeM3: sum(group.map(unit => unit.volumeM3)) * scale, coefficient: rainMm ? runoffMm / rainMm : null }
     })
     return { units, basins }
   }

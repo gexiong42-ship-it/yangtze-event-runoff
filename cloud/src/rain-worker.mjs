@@ -3,6 +3,7 @@ import { inspectDataset, h5Adapter } from './rain-dataset.mjs'
 import { nativeWeights } from './rain-spatial.mjs'
 import { assembleEvent, eventPeriod } from './event-input.mjs'
 import { name as regionName } from './region-scope.mjs'
+import { fromArrayBuffer } from 'geotiff'
 
 let dataset = null, file = null
 const weights = new Map()
@@ -42,7 +43,19 @@ self.addEventListener('message', async event => {
   const progress = text => self.postMessage({ id, progress: text })
   try {
     let result
-    if (type === 'open') result = await open(payload.file)
+    if (type === 'land-use-preview') {
+      const { basin, year } = payload
+      const query = new URLSearchParams({ basin, year: String(year), kind: 'land' })
+      const raster = await (await fromArrayBuffer(await bytes('/api/raster?' + query))).getImage()
+      const scale = Math.min(1, 960 / Math.max(raster.getWidth(), raster.getHeight()))
+      const width = Math.max(1, Math.round(raster.getWidth() * scale))
+      const height = Math.max(1, Math.round(raster.getHeight() * scale))
+      const samples = await raster.readRasters({ width, height, samples: [0], interleave: true, resampleMethod: 'nearest' })
+      const noData = raster.getGDALNoData()
+      const pixels = Uint8Array.from(samples, code => code !== noData && code >= 1 && code <= 9 ? code : 0)
+      self.postMessage({ id, result: { width, height, pixels } }, [pixels.buffer])
+      return
+    } else if (type === 'open') result = await open(payload.file)
     else if (type === 'calculate') {
       if (!dataset) throw new Error('请先选择 NetCDF 文件。')
       const { config, catalogue, variable, unitOverride } = payload

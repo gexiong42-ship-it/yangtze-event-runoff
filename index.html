@@ -4,13 +4,14 @@
   <meta name="generator" content="Local Python (generate_page_metadata.py)">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>分流域事件产流估算</title>
+  <title>分流域事件产流估算 V1.1</title>
   <link rel="stylesheet" href="style.css">
   <script defer src="runoff.js"></script>
+  <script defer src="result-view.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
-  <header class="top"><strong>分流域事件产流估算</strong><span>CN05.1 · CLCD · HYSOGs250m</span></header>
+  <header class="top"><strong>分流域事件产流估算 V1.1</strong><span>CN05.1 · CLCD · HYSOGs250m</span></header>
   <div class="layout">
     <aside>
       <h2>研究区域</h2>
@@ -57,7 +58,32 @@
         <div class="result-header"><h2>分流域结果</h2><div class="actions"><button type="button" id="csv" class="secondary" disabled>下载 CSV</button><button type="button" id="json" class="secondary" disabled>下载复算 JSON</button></div></div>
         <p id="result-state" class="note">选择区域和日期后执行计算。</p>
         <div id="results"></div>
-        <p class="note">陆地产流与水面直接降水输入分别列示。覆盖率按有效陆地与水面面积合计占 CLCD 有效分类面积的比例计算，CLCD 原始未分类像元不在分母内。缺测和缺少 CN 的面积保留质量标记。土地利用采用事件开始年份。</p>
+        <div class="result-map-actions">
+          <button type="button" id="open-cn-map" class="secondary" hidden>查看流域 CN 地图</button>
+          <button type="button" id="open-land-map" class="secondary" hidden>查看土地利用图</button>
+        </div>
+        <dialog id="land-map" aria-labelledby="land-map-title">
+          <div class="cn-map-header">
+            <h2 id="land-map-title">流域土地利用图</h2>
+            <form method="dialog"><button class="secondary">关闭</button></form>
+          </div>
+          <label>流域与土地利用年份<select id="land-map-basin"></select></label>
+          <p id="land-map-status" class="note" role="status"></p>
+          <canvas id="land-map-canvas" role="img" aria-label="所选流域的 CLCD 土地利用分类图" hidden></canvas>
+          <ul id="land-map-legend" aria-label="地类图例" hidden></ul>
+        </dialog>
+        <dialog id="cn-map" aria-labelledby="cn-map-title">
+          <div class="cn-map-header">
+            <h2 id="cn-map-title">流域 CN 地图</h2>
+            <form method="dialog"><button class="secondary">关闭</button></form>
+          </div>
+          <label>流域与土地利用年份<select id="cn-map-basin"></select></label>
+          <p id="cn-map-values" aria-live="polite"></p>
+          <canvas id="cn-map-canvas" role="img" aria-label="有效陆地降水网格的调整后 CN 分布"></canvas>
+          <div id="cn-map-legend" class="cn-map-legend">CN 0 <span aria-hidden="true"></span> 100</div>
+          <p id="cn-map-status" class="note"></p>
+        </dialog>
+        <p class="note">陆地产流与水面直接降水输入分别列示。覆盖率按有效陆地与水面面积合计占 CLCD 有效分类面积的比例计算，CLCD 原始未分类像元不在分母内。缺测和缺少 CN 的面积保留质量标记。土地利用采用事件开始年份。太湖试用边界的体积按官方总面积等比例折算。</p>
         <details id="quality-details"><summary>资料覆盖与排除面积</summary><div id="quality-preview"></div></details>
         <details><summary>逐日雨量与累计产流差分</summary><div id="daily-preview"></div></details>
         <details><summary>CN、土组与湿润条件明细</summary><div id="cn-preview"></div></details>
@@ -75,6 +101,7 @@
       </details>
       <details class="panel supporting-panel">
         <summary>本地数据库与 CN 参数</summary>
+        <p class="note">太湖流域水量按水利部太湖流域管理局公布的总面积 36,895 km² 折算。以八区外缘试用边界的栅格总面积 37,910.37 km² 为分母，对有效陆地、有效水面、排除及未分类面积统一使用 36,895 ÷ 37,910.37 的比例。陆地产流和水面直接降水分别按折算后的有效面积换算体积。CN、产流深、覆盖率和地图仍按原栅格统计。 <a href="https://www.tba.gov.cn/slbthlyglj/zwzx/content/c9e1f68e-d22c-45ba-a433-0efb214251ba.html" target="_blank" rel="noopener noreferrer">查看官方面积来源</a></p>
         <h2 class="section-heading">当前年份土地利用</h2><div id="database-preview"></div>
         <h2 class="section-heading">水文土壤资料</h2><div id="soil-database-preview"></div>
         <h2 class="section-heading">当前 CN 初值</h2>
